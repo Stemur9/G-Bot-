@@ -219,32 +219,51 @@
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
 
-        const fullWorldBackup = [
-            { name: { common: "United States", official: "United States of America" }, cca2: "US", cca3: "USA", altSpellings: ["USA","US"], latlng: [37.09,-95.71], population: 331000000, region: "Americas", flag: "🇺🇸" },
-            { name: { common: "India", official: "Republic of India" }, cca2: "IN", cca3: "IND", altSpellings: ["IN","Bharat"], latlng: [20.59,78.96], population: 1380000000, region: "Asia", flag: "🇮🇳" },
-            { name: { common: "China", official: "People's Republic of China" }, cca2: "CN", cca3: "CHN", altSpellings: ["CN"], latlng: [35.86,104.19], population: 1400000000, region: "Asia", flag: "🇨🇳" },
-            { name: { common: "Vanuatu", official: "Republic of Vanuatu" }, cca2: "VU", cca3: "VUT", altSpellings: ["VU"], latlng: [-15.37,166.95], population: 307150, region: "Oceania", flag: "🇻🇺" },
-            { name: { common: "Germany", official: "Federal Republic of Germany" }, cca2: "DE", cca3: "DEU", altSpellings: ["DE","Deutschland"], latlng: [51.16,10.45], population: 83000000, region: "Europe", flag: "🇩🇪" },
-            { name: { common: "France", official: "French Republic" }, cca2: "FR", cca3: "FRA", altSpellings: ["FR"], latlng: [46.22,2.21], population: 67000000, region: "Europe", flag: "🇫🇷" },
-            { name: { common: "Italy", official: "Italian Republic" }, cca2: "IT", cca3: "ITA", altSpellings: ["IT","Italia"], latlng: [41.87,12.56], population: 60000000, region: "Europe", flag: "🇮🇹" },
-            { name: { common: "Spain", official: "Kingdom of Spain" }, cca2: "ES", cca3: "ESP", altSpellings: ["ES","Espana"], latlng: [40.46,-3.74], population: 47000000, region: "Europe", flag: "🇪🇸" },
-            { name: { common: "Austria", official: "Republic of Austria" }, cca2: "AT", cca3: "AUT", altSpellings: ["AT","Osterreich"], latlng: [47.51,14.55], population: 9000000, region: "Europe", flag: "🇦🇹" },
-            { name: { common: "Japan", official: "Japan" }, cca2: "JP", cca3: "JPN", altSpellings: ["JP","Nippon"], latlng: [36.20,138.25], population: 125000000, region: "Asia", flag: "🇯🇵" }
-        ];
-
+        // ------------------------------------------------------------------
+        // Loads all countries from two free sources (no API key needed):
+        // 1) Country list (names, codes, coordinates, flags) from GitHub
+        // 2) Population numbers from the World Bank
+        // ------------------------------------------------------------------
         async function fetchWorldData() {
+            const chatBox = document.getElementById('chatBox');
+
             try {
-                const response = await fetch('https://restcountries.com/v3.1/all');
-                if (!response.ok) throw new Error('Primary API failed');
-                countriesList = await response.json();
-            } catch (err1) {
-                countriesList = fullWorldBackup;
+                // 1) Country list
+                const countriesRes = await fetch('https://raw.githubusercontent.com/mledoze/countries/master/countries.json');
+                if (!countriesRes.ok) throw new Error('Country list failed: ' + countriesRes.status);
+                countriesList = await countriesRes.json();
+
+                // 2) Population (World Bank). If this fails, the game still runs.
+                try {
+                    const popRes = await fetch('https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&per_page=400&mrnev=1');
+                    if (!popRes.ok) throw new Error('Population failed: ' + popRes.status);
+                    const popJson = await popRes.json();
+                    const popMap = {};
+                    (popJson[1] || []).forEach(e => {
+                        if (e.countryiso3code && typeof e.value === 'number') {
+                            popMap[e.countryiso3code] = e.value;
+                        }
+                    });
+                    countriesList.forEach(c => {
+                        if (popMap[c.cca3]) c.population = popMap[c.cca3];
+                    });
+                } catch (popErr) {
+                    console.warn('Could not load population data:', popErr);
+                }
+            } catch (err) {
+                console.error('Could not load country data:', err);
+                chatBox.innerHTML = `
+                    <div class="message bot">
+                        ⚠️ <b>Could not load the country database.</b><br>
+                        Please reload the page.
+                    </div>`;
+                document.getElementById('scoreBoard').innerText = 'Status: Error loading data';
+                return;
             }
 
             isLoaded = true;
             document.getElementById('scoreBoard').innerText = `Status: Setup Mission | Score: 0 / Target: --`;
-            
-            const chatBox = document.getElementById('chatBox');
+
             chatBox.innerHTML = `
                 <div class="message bot">
                     Hello Explorer! 🧭 Welcome to <b>Global Explorer: Country Rarity Quiz</b>.<br><br>
@@ -413,7 +432,7 @@
                 return;
             }
 
-            // NEU: Debug-Befehl eingebaut, um geladene Länder zu überprüfen!
+            // Debug-Befehl, um geladene Länder zu überprüfen
             if (text.toLowerCase() === 'debug') {
                 const namesList = countriesList.map(c => c.name?.common).filter(Boolean).sort().join(', ');
                 setTimeout(() => {
