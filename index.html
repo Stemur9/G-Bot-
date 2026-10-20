@@ -336,10 +336,26 @@
         function formatCountryResult(c) {
             const lat = c.latlng ? c.latlng[0] : 0;
             const lng = c.latlng ? c.latlng[1] : 0;
-            const pop = c.population !== undefined ? c.population : 0;
+            
+            // Exakte Extraktion der Bevölkerung (Unterstützung für API und versch. Mirrors)
+            let pop = 0;
+            if (typeof c.population === 'number' && c.population > 0) {
+                pop = c.population;
+            } else if (c.人口) {
+                pop = c.population;
+            }
+
             const rarity = calculateRarity(pop);
             const flag = c.flag || "🗺️";
-            const popFormatted = pop >= 1000000 ? (pop / 1000000).toFixed(2) + "M" : (pop / 1000).toFixed(0) + "k";
+            
+            let popFormatted = "";
+            if (pop >= 1000000) {
+                popFormatted = (pop / 1000000).toFixed(2) + "M";
+            } else if (pop > 0) {
+                popFormatted = (pop / 1000).toFixed(0) + "k";
+            } else {
+                popFormatted = "Unknown";
+            }
 
             return {
                 name: `${c.name.common} ${flag}`,
