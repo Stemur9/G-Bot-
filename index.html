@@ -250,7 +250,7 @@
                     Hello Explorer! 🧭 Welcome to <b>Global Explorer: Country Rarity Quiz</b>.<br><br>
                     <b>How the game works:</b><br>
                     Your goal is to guess world countries. Highly populated or famous countries (like China or USA) grant fewer points, while smaller or lesser-known countries award huge rarity points! Reach the target score to win.<br>
-                    <i>(Tip: Type <b>'cancel'</b> anytime to exit or reset)</i><br><br>
+                    <i>(Tip: Type <b>'cancel'</b> anytime to exit or reset, or type <b>'debug'</b> to view loaded countries)</i><br><br>
                     <b>How many rounds do you want to play?</b><br>
                     Type a number (e.g., 3, 5, or 10).
                 </div>`;
@@ -292,42 +292,38 @@
             return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase().trim();
         }
 
-        function getEnglishNameVariants(c) {
-            const set = new Set();
-            if (c.name) {
-                if (c.name.common) set.add(normalizeStr(c.name.common));
-                if (c.name.official) set.add(normalizeStr(c.name.official));
-            }
-            if (c.cca2) set.add(normalizeStr(c.cca2));
-            if (c.cca3) set.add(normalizeStr(c.cca3));
-            if (c.cioc) set.add(normalizeStr(c.cioc));
-            if (c.altSpellings) {
-                c.altSpellings.forEach(alt => set.add(normalizeStr(alt)));
-            }
-            return Array.from(set).filter(Boolean);
-        }
-
         function findCountry(query) {
             const cleanQuery = normalizeStr(query);
             if (!cleanQuery) return null;
 
-            // 1. Exakter Abgleich (nur Englisch / ISO / offizielle englische Bezeichnungen)
+            // 1. Exakter Abgleich (Common Name, Official Name, ISO Codes)
             for (let c of countriesList) {
                 if (!c || !c.name) continue;
-                const names = getEnglishNameVariants(c);
-                if (names.includes(cleanQuery)) {
+                
+                const common = normalizeStr(c.name.common);
+                const official = normalizeStr(c.name.official);
+                const cca2 = normalizeStr(c.cca2);
+                const cca3 = normalizeStr(c.cca3);
+
+                if (common === cleanQuery || official === cleanQuery || cca2 === cleanQuery || cca3 === cleanQuery) {
                     return c;
+                }
+
+                if (c.altSpellings) {
+                    for (let alt of c.altSpellings) {
+                        if (normalizeStr(alt) === cleanQuery) return c;
+                    }
                 }
             }
 
-            // 2. Teilwortsuche (nur Englisch)
-            if (cleanQuery.length >= 3) {
+            // 2. Intelligente Teilwortsuche (startsWith oder exakter Teilstring)
+            if (cleanQuery.length >= 2) {
                 for (let c of countriesList) {
                     if (!c || !c.name) continue;
                     const common = normalizeStr(c.name.common);
                     const official = normalizeStr(c.name.official);
 
-                    if (common === cleanQuery || official === cleanQuery || common.startsWith(cleanQuery)) {
+                    if (common.includes(cleanQuery) || official.includes(cleanQuery)) {
                         return c;
                     }
                 }
@@ -412,6 +408,16 @@
                 resetGame();
                 setTimeout(() => {
                     chatBox.innerHTML += `<div class="message bot">🛑 <b>Game reset!</b><br><br><b>How many rounds do you want to play?</b><br>Type a number (e.g., 3, 5, or 10).</div>`;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }, 300);
+                return;
+            }
+
+            // NEU: Debug-Befehl eingebaut, um geladene Länder zu überprüfen!
+            if (text.toLowerCase() === 'debug') {
+                const namesList = countriesList.map(c => c.name?.common).filter(Boolean).sort().join(', ');
+                setTimeout(() => {
+                    chatBox.innerHTML += `<div class="message bot">🛠️ <b>DEBUG INFO:</b><br>Loaded countries count: <b>${countriesList.length}</b><br><br><b>Available countries:</b> ${namesList}</div>`;
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }, 300);
                 return;
