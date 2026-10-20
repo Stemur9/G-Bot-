@@ -220,16 +220,16 @@
         }).addTo(map);
 
         const fullWorldBackup = [
-            { name: { common: "United States" }, cca2: "US", cca3: "USA", altSpellings: ["USA","US"], latlng: [37.09,-95.71], population: 331000000, region: "Americas", flag: "🇺🇸" },
-            { name: { common: "India" }, cca2: "IN", cca3: "IND", altSpellings: ["IN","Bharat"], latlng: [20.59,78.96], population: 1380000000, region: "Asia", flag: "🇮🇳" },
-            { name: { common: "China" }, cca2: "CN", cca3: "CHN", altSpellings: ["CN"], latlng: [35.86,104.19], population: 1400000000, region: "Asia", flag: "🇨🇳" },
-            { name: { common: "Vanuatu" }, cca2: "VU", cca3: "VUT", altSpellings: ["VU"], latlng: [-15.37,166.95], population: 307150, region: "Oceania", flag: "🇻🇺" },
-            { name: { common: "Germany" }, cca2: "DE", cca3: "DEU", altSpellings: ["DE","Deutschland"], latlng: [51.16,10.45], population: 83000000, region: "Europe", flag: "🇩🇪" },
-            { name: { common: "France" }, cca2: "FR", cca3: "FRA", altSpellings: ["FR"], latlng: [46.22,2.21], population: 67000000, region: "Europe", flag: "🇫🇷" },
-            { name: { common: "Italy" }, cca2: "IT", cca3: "ITA", altSpellings: ["IT","Italia"], latlng: [41.87,12.56], population: 60000000, region: "Europe", flag: "🇮🇹" },
-            { name: { common: "Spain" }, cca2: "ES", cca3: "ESP", altSpellings: ["ES","Espana"], latlng: [40.46,-3.74], population: 47000000, region: "Europe", flag: "🇪🇸" },
-            { name: { common: "Austria" }, cca2: "AT", cca3: "AUT", altSpellings: ["AT","Osterreich"], latlng: [47.51,14.55], population: 9000000, region: "Europe", flag: "🇦🇹" },
-            { name: { common: "Japan" }, cca2: "JP", cca3: "JPN", altSpellings: ["JP","Nippon"], latlng: [36.20,138.25], population: 125000000, region: "Asia", flag: "🇯🇵" }
+            { name: { common: "United States", official: "United States of America" }, cca2: "US", cca3: "USA", altSpellings: ["USA","US"], latlng: [37.09,-95.71], population: 331000000, region: "Americas", flag: "🇺🇸" },
+            { name: { common: "India", official: "Republic of India" }, cca2: "IN", cca3: "IND", altSpellings: ["IN","Bharat"], latlng: [20.59,78.96], population: 1380000000, region: "Asia", flag: "🇮🇳" },
+            { name: { common: "China", official: "People's Republic of China" }, cca2: "CN", cca3: "CHN", altSpellings: ["CN"], latlng: [35.86,104.19], population: 1400000000, region: "Asia", flag: "🇨🇳" },
+            { name: { common: "Vanuatu", official: "Republic of Vanuatu" }, cca2: "VU", cca3: "VUT", altSpellings: ["VU"], latlng: [-15.37,166.95], population: 307150, region: "Oceania", flag: "🇻🇺" },
+            { name: { common: "Germany", official: "Federal Republic of Germany" }, cca2: "DE", cca3: "DEU", altSpellings: ["DE","Deutschland"], latlng: [51.16,10.45], population: 83000000, region: "Europe", flag: "🇩🇪" },
+            { name: { common: "France", official: "French Republic" }, cca2: "FR", cca3: "FRA", altSpellings: ["FR"], latlng: [46.22,2.21], population: 67000000, region: "Europe", flag: "🇫🇷" },
+            { name: { common: "Italy", official: "Italian Republic" }, cca2: "IT", cca3: "ITA", altSpellings: ["IT","Italia"], latlng: [41.87,12.56], population: 60000000, region: "Europe", flag: "🇮🇹" },
+            { name: { common: "Spain", official: "Kingdom of Spain" }, cca2: "ES", cca3: "ESP", altSpellings: ["ES","Espana"], latlng: [40.46,-3.74], population: 47000000, region: "Europe", flag: "🇪🇸" },
+            { name: { common: "Austria", official: "Republic of Austria" }, cca2: "AT", cca3: "AUT", altSpellings: ["AT","Osterreich"], latlng: [47.51,14.55], population: 9000000, region: "Europe", flag: "🇦🇹" },
+            { name: { common: "Japan", official: "Japan" }, cca2: "JP", cca3: "JPN", altSpellings: ["JP","Nippon"], latlng: [36.20,138.25], population: 125000000, region: "Asia", flag: "🇯🇵" }
         ];
 
         async function fetchWorldData() {
@@ -273,10 +273,9 @@
         }
 
         function calculateRarity(countryName, pop) {
-            // Bekannte Mini-/Kult-Staaten Override (Löst das Monaco-/Vatikan-Paradoxon)
             const famousMicrostates = ["Monaco", "Vatican City", "San Marino", "Liechtenstein", "Andorra", "Singapore", "Malta", "Luxembourg"];
             if (famousMicrostates.includes(countryName)) {
-                return 40; // Fairer, mittelschwerer Punktewert, da sehr bekannt trotz geringer Einwohner
+                return 40; 
             }
 
             if (!pop || pop < 1) return 98;
@@ -293,43 +292,42 @@
             return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase().trim();
         }
 
+        function getEnglishNameVariants(c) {
+            const set = new Set();
+            if (c.name) {
+                if (c.name.common) set.add(normalizeStr(c.name.common));
+                if (c.name.official) set.add(normalizeStr(c.name.official));
+            }
+            if (c.cca2) set.add(normalizeStr(c.cca2));
+            if (c.cca3) set.add(normalizeStr(c.cca3));
+            if (c.cioc) set.add(normalizeStr(c.cioc));
+            if (c.altSpellings) {
+                c.altSpellings.forEach(alt => set.add(normalizeStr(alt)));
+            }
+            return Array.from(set).filter(Boolean);
+        }
+
         function findCountry(query) {
             const cleanQuery = normalizeStr(query);
             if (!cleanQuery) return null;
 
+            // 1. Exakter Abgleich (nur Englisch / ISO / offizielle englische Bezeichnungen)
             for (let c of countriesList) {
                 if (!c || !c.name) continue;
-
-                const names = [
-                    c.name.common,
-                    c.name.official,
-                    c.cca2,
-                    c.cca3,
-                    c.cioc,
-                    ...(c.altSpellings || [])
-                ];
-
-                if (c.translations) {
-                    for (let langKey in c.translations) {
-                        if (c.translations[langKey]?.common) names.push(c.translations[langKey].common);
-                        if (c.translations[langKey]?.official) names.push(c.translations[langKey].official);
-                    }
-                }
-
-                const normalizedNames = names.filter(Boolean).map(n => normalizeStr(n));
-
-                if (normalizedNames.includes(cleanQuery)) {
+                const names = getEnglishNameVariants(c);
+                if (names.includes(cleanQuery)) {
                     return c;
                 }
             }
 
-            if (cleanQuery.length >= 2) {
+            // 2. Teilwortsuche (nur Englisch)
+            if (cleanQuery.length >= 3) {
                 for (let c of countriesList) {
                     if (!c || !c.name) continue;
                     const common = normalizeStr(c.name.common);
                     const official = normalizeStr(c.name.official);
 
-                    if (common.includes(cleanQuery) || official.includes(cleanQuery)) {
+                    if (common === cleanQuery || official === cleanQuery || common.startsWith(cleanQuery)) {
                         return c;
                     }
                 }
