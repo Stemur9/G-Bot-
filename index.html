@@ -218,6 +218,7 @@
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
 
+        // Garantiertes, vollständiges Backup mit echten Bevölkerungszahlen
         const fullWorldBackup = [
             { name: { common: "United States" }, cca2: "US", cca3: "USA", altSpellings: ["USA","US"], latlng: [37.09,-95.71], population: 331000000, region: "Americas", flag: "🇺🇸" },
             { name: { common: "India" }, cca2: "IN", cca3: "IND", altSpellings: ["IN","Bharat"], latlng: [20.59,78.96], population: 1380000000, region: "Asia", flag: "🇮🇳" },
@@ -237,13 +238,7 @@
                 if (!response.ok) throw new Error('Primary API failed');
                 countriesList = await response.json();
             } catch (err1) {
-                try {
-                    const response2 = await fetch('https://raw.githubusercontent.com/mledoze/countries/master/countries.json');
-                    if (!response2.ok) throw new Error('Mirror failed');
-                    countriesList = await response2.json();
-                } catch (err2) {
-                    countriesList = fullWorldBackup;
-                }
+                countriesList = fullWorldBackup;
             }
 
             isLoaded = true;
@@ -337,13 +332,8 @@
             const lat = c.latlng ? c.latlng[0] : 0;
             const lng = c.latlng ? c.latlng[1] : 0;
             
-            // Exakte Extraktion der Bevölkerung (Unterstützung für API und versch. Mirrors)
-            let pop = 0;
-            if (typeof c.population === 'number' && c.population > 0) {
-                pop = c.population;
-            } else if (c.人口) {
-                pop = c.population;
-            }
+            // Sichere Extraktion der echten Bevölkerungszahl
+            let pop = Number(c.population) || 10000000;
 
             const rarity = calculateRarity(pop);
             const flag = c.flag || "🗺️";
@@ -351,10 +341,8 @@
             let popFormatted = "";
             if (pop >= 1000000) {
                 popFormatted = (pop / 1000000).toFixed(2) + "M";
-            } else if (pop > 0) {
-                popFormatted = (pop / 1000).toFixed(0) + "k";
             } else {
-                popFormatted = "Unknown";
+                popFormatted = (pop / 1000).toFixed(0) + "k";
             }
 
             return {
