@@ -272,7 +272,13 @@
             if (currentMarker) map.removeLayer(currentMarker);
         }
 
-        function calculateRarity(pop) {
+        function calculateRarity(countryName, pop) {
+            // Bekannte Mini-/Kult-Staaten Override (Löst das Monaco-/Vatikan-Paradoxon)
+            const famousMicrostates = ["Monaco", "Vatican City", "San Marino", "Liechtenstein", "Andorra", "Singapore", "Malta", "Luxembourg"];
+            if (famousMicrostates.includes(countryName)) {
+                return 40; // Fairer, mittelschwerer Punktewert, da sehr bekannt trotz geringer Einwohner
+            }
+
             if (!pop || pop < 1) return 98;
             if (pop < 500000) return 98;
             if (pop < 5000000) return 85;
@@ -284,7 +290,7 @@
 
         function normalizeStr(str) {
             if (!str) return "";
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase().trim();
         }
 
         function findCountry(query) {
@@ -292,9 +298,11 @@
             if (!cleanQuery) return null;
 
             for (let c of countriesList) {
+                if (!c || !c.name) continue;
+
                 const names = [
-                    c.name?.common,
-                    c.name?.official,
+                    c.name.common,
+                    c.name.official,
                     c.cca2,
                     c.cca3,
                     c.cioc,
@@ -317,8 +325,9 @@
 
             if (cleanQuery.length >= 2) {
                 for (let c of countriesList) {
-                    const common = normalizeStr(c.name?.common);
-                    const official = normalizeStr(c.name?.official);
+                    if (!c || !c.name) continue;
+                    const common = normalizeStr(c.name.common);
+                    const official = normalizeStr(c.name.official);
 
                     if (common.includes(cleanQuery) || official.includes(cleanQuery)) {
                         return c;
@@ -330,23 +339,33 @@
         }
 
         function formatCountryResult(c) {
-            const lat = c.latlng ? c.latlng[0] : 0;
-            const lng = c.latlng ? c.latlng[1] : 0;
-            let pop = Number(c.population) || 10000000;
+            let lat = 0;
+            let lng = 0;
+            if (c.latlng && Array.isArray(c.latlng) && c.latlng.length >= 2) {
+                lat = c.latlng[0];
+                lng = c.latlng[1];
+            } else if (c.capitalInfo && c.capitalInfo.latlng && c.capitalInfo.latlng.length >= 2) {
+                lat = c.capitalInfo.latlng[0];
+                lng = c.capitalInfo.latlng[1];
+            }
 
-            const rarity = calculateRarity(pop);
+            let pop = typeof c.population === 'number' ? c.population : 1000000;
+            const countryName = c.name.common;
+            const rarity = calculateRarity(countryName, pop);
             const flag = c.flag || "🗺️";
             
             let popFormatted = "";
             if (pop >= 1000000) {
                 popFormatted = (pop / 1000000).toFixed(2) + "M";
-            } else {
+            } else if (pop > 0) {
                 popFormatted = (pop / 1000).toFixed(0) + "k";
+            } else {
+                popFormatted = "N/A";
             }
 
             return {
-                commonName: c.name.common,
-                name: `${c.name.common} ${flag}`,
+                commonName: countryName,
+                name: `${countryName} ${flag}`,
                 lat: lat,
                 lng: lng,
                 zoom: 5,
