@@ -202,6 +202,7 @@
         let totalScore = 0;
         let currentMarker = null;
         let mapRevealed = false;
+        let guessedCountriesThisGame = [];
 
         const map = L.map('map', { 
             zoomControl: false,
@@ -218,7 +219,6 @@
             attribution: 'Tiles &copy; Esri'
         }).addTo(map);
 
-        // Garantiertes, vollständiges Backup mit echten Bevölkerungszahlen
         const fullWorldBackup = [
             { name: { common: "United States" }, cca2: "US", cca3: "USA", altSpellings: ["USA","US"], latlng: [37.09,-95.71], population: 331000000, region: "Americas", flag: "🇺🇸" },
             { name: { common: "India" }, cca2: "IN", cca3: "IND", altSpellings: ["IN","Bharat"], latlng: [20.59,78.96], population: 1380000000, region: "Asia", flag: "🇮🇳" },
@@ -263,6 +263,7 @@
             totalScore = 0;
             currentRound = 0;
             mapRevealed = false;
+            guessedCountriesThisGame = [];
             document.getElementById('scoreBoard').innerText = `Status: Setup Mission | Score: 0 / Target: --`;
             
             document.getElementById('mapPlaceholder').classList.remove('hidden');
@@ -310,17 +311,17 @@
                 const normalizedNames = names.filter(Boolean).map(n => normalizeStr(n));
 
                 if (normalizedNames.includes(cleanQuery)) {
-                    return formatCountryResult(c);
+                    return c;
                 }
             }
 
-            if (cleanQuery.length >= 3) {
+            if (cleanQuery.length >= 2) {
                 for (let c of countriesList) {
                     const common = normalizeStr(c.name?.common);
                     const official = normalizeStr(c.name?.official);
 
-                    if (common.includes(cleanQuery) || cleanQuery.includes(common) || official.includes(cleanQuery)) {
-                        return formatCountryResult(c);
+                    if (common.includes(cleanQuery) || official.includes(cleanQuery)) {
+                        return c;
                     }
                 }
             }
@@ -331,8 +332,6 @@
         function formatCountryResult(c) {
             const lat = c.latlng ? c.latlng[0] : 0;
             const lng = c.latlng ? c.latlng[1] : 0;
-            
-            // Sichere Extraktion der echten Bevölkerungszahl
             let pop = Number(c.population) || 10000000;
 
             const rarity = calculateRarity(pop);
@@ -346,6 +345,7 @@
             }
 
             return {
+                commonName: c.name.common,
                 name: `${c.name.common} ${flag}`,
                 lat: lat,
                 lng: lng,
@@ -432,27 +432,34 @@
                     }
                 }
                 else if (gameState === 2) {
-                    const item = findCountry(text);
+                    const foundObj = findCountry(text);
 
-                    if (item) {
-                        totalScore += item.rarity;
+                    if (foundObj) {
+                        const formatted = formatCountryResult(foundObj);
 
-                        revealAndFlyTo(item.lat, item.lng, item.zoom, item.name, item.info, item.rarity);
-
-                        botReply = `✅ <b>Discovered:</b> ${item.name}<br>📖 <i>${item.info}</i><br>⭐ <b>Points earned:</b> +${item.rarity}`;
-
-                        if (currentRound >= totalRounds) {
-                            gameState = 3;
-                            if (totalScore >= targetScore) {
-                                botReply += `<br><br>🎉 <b>MISSION ACCOMPLISHED!</b><br>Final Score: ${totalScore} / ${targetScore}. You passed! 🏆<br><br>Type <b>'cancel'</b> to play again.`;
-                            } else {
-                                botReply += `<br><br>❌ <b>Leider keine Versuche mehr!</b><br>Final Score: ${totalScore} / ${targetScore}. Target was ${targetScore}. Try picking rarer countries next time!<br><br>Type <b>'cancel'</b> to try again.`;
-                            }
-                            document.getElementById('scoreBoard').innerText = `Game Over | Final Score: ${totalScore} (Target: ${targetScore})`;
+                        if (guessedCountriesThisGame.includes(formatted.commonName)) {
+                            botReply = `⚠️ You have already entered <b>${formatted.commonName}</b> in this game! Please choose another country.`;
                         } else {
-                            currentRound++;
-                            botReply += `<br><br><b>Round ${currentRound} / ${totalRounds}</b><br>Type your next country.`;
-                            document.getElementById('scoreBoard').innerText = `Round ${currentRound}/${totalRounds} | Score: ${totalScore} / Target: ${targetScore}`;
+                            guessedCountriesThisGame.push(formatted.commonName);
+                            totalScore += formatted.rarity;
+
+                            revealAndFlyTo(formatted.lat, formatted.lng, formatted.zoom, formatted.name, formatted.info, formatted.rarity);
+
+                            botReply = `✅ <b>Discovered:</b> ${formatted.name}<br>📖 <i>${formatted.info}</i><br>⭐ <b>Points earned:</b> +${formatted.rarity}`;
+
+                            if (currentRound >= totalRounds) {
+                                gameState = 3;
+                                if (totalScore >= targetScore) {
+                                    botReply += `<br><br>🎉 <b>MISSION ACCOMPLISHED!</b><br>Final Score: ${totalScore} / ${targetScore}. You passed! 🏆<br><br>Type <b>'cancel'</b> to play again.`;
+                                } else {
+                                    botReply += `<br><br>❌ <b>Unfortunately, no more tries left!</b><br>Final Score: ${totalScore} / ${targetScore}. Target was ${targetScore}. Try picking rarer countries next time!<br><br>Type <b>'cancel'</b> to try again.`;
+                                }
+                                document.getElementById('scoreBoard').innerText = `Game Over | Final Score: ${totalScore} (Target: ${targetScore})`;
+                            } else {
+                                currentRound++;
+                                botReply += `<br><br><b>Round ${currentRound} / ${totalRounds}</b><br>Type your next country.`;
+                                document.getElementById('scoreBoard').innerText = `Round ${currentRound}/${totalRounds} | Score: ${totalScore} / Target: ${targetScore}`;
+                            }
                         }
                     } 
                     else {
