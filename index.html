@@ -291,19 +291,54 @@
             if (currentMarker) map.removeLayer(currentMarker);
         }
 
-        function calculateRarity(countryName, pop) {
-            const famousMicrostates = ["Monaco", "Vatican City", "San Marino", "Liechtenstein", "Andorra", "Singapore", "Malta", "Luxembourg"];
-            if (famousMicrostates.includes(countryName)) {
-                return 40; 
-            }
+        // ------------------------------------------------------------------
+        // RARITY TIERS (hand-picked, based on how well known a country is to
+        // an English-speaking audience in Austria). Easy to adjust:
+        // just move a 3-letter country code into another list.
+        //   15 = very common guess ... 98 = very rare guess
+        // ------------------------------------------------------------------
+        const RARITY_TIERS = {
+            15: [
+                "USA","GBR","FRA","DEU","ITA","ESP","CHN","JPN","IND","RUS","BRA","CAN","AUS","MEX","AUT","CHE"
+            ],
+            30: [
+                "NLD","BEL","POL","CZE","SVK","SVN","HUN","HRV","GRC","TUR","PRT","SWE","NOR","DNK","FIN","IRL",
+                "UKR","EGY","THA","ZAF","KOR","ARG","ISR","NZL","ARE","MCO","LIE","VAT"
+            ],
+            50: [
+                "CHL","COL","PER","VEN","CUB","JAM","CRI","PAN","ECU","URY","DOM","BHS",
+                "ROU","BGR","SRB","BIH","LUX","MLT","CYP","ISL","EST","LVA","LTU","ALB","BLR",
+                "IDN","MYS","SGP","PHL","VNM","PAK","BGD","IRN","IRQ","SAU","QAT","JOR","LBN","AFG","SYR",
+                "NPL","LKA","KHM","TWN","PRK","HKG","MDV","KWT","PSE","YEM",
+                "MAR","TUN","KEN","NGA","DZA","TZA","ETH","LBY"
+            ],
+            75: [
+                "BOL","PRY","GTM","HND","SLV","NIC","HTI","TTO","BRB","BLZ",
+                "MKD","MNE","MDA","UNK","XKX","AND","SMR",
+                "KAZ","UZB","GEO","ARM","AZE","MNG","LAO","MMR","OMN","BHR","BTN","BRN","TLS",
+                "GHA","SEN","CIV","CMR","UGA","ZWE","ZMB","MOZ","AGO","MDG","NAM","BWA","RWA","SDN","SOM",
+                "COD","MUS","SYC","CPV","MLI","FJI","PNG","WSM"
+            ],
+            98: [
+                "GUY","SUR","DMA","KNA","VCT","GRD","ATG","LCA",
+                "KGZ","TJK","TKM",
+                "NER","BFA","MRT","TCD","ERI","DJI","COM","STP","GNB","GNQ","GAB","COG","CAF","BDI","LSO","SWZ",
+                "MWI","LBR","SLE","GMB","GIN","TGO","BEN","SSD",
+                "TON","VUT","SLB","KIR","TUV","NRU","PLW","MHL","FSM"
+            ]
+        };
 
-            if (!pop || pop < 1) return 98;
-            if (pop < 500000) return 98;
-            if (pop < 5000000) return 85;
-            if (pop < 20000000) return 70;
-            if (pop < 60000000) return 50;
-            if (pop < 150000000) return 30;
-            return 15;
+        const rarityByCode = {};
+        Object.entries(RARITY_TIERS).forEach(([points, codes]) => {
+            codes.forEach(code => { rarityByCode[code] = Number(points); });
+        });
+
+        function calculateRarity(cca3, pop) {
+            if (rarityByCode[cca3] !== undefined) return rarityByCode[cca3];
+
+            // Countries not on any list (mostly territories): fall back to population
+            if (!pop || pop < 5000000) return 98;
+            return 75;
         }
 
         function normalizeStr(str) {
@@ -364,7 +399,7 @@
 
             let pop = typeof c.population === 'number' ? c.population : 1000000;
             const countryName = c.name.common;
-            const rarity = calculateRarity(countryName, pop);
+            const rarity = calculateRarity(c.cca3, pop);
             const flag = c.flag || "🗺️";
             
             let popFormatted = "";
@@ -450,7 +485,7 @@
                     if (!isNaN(roundsNum) && roundsNum > 0 && roundsNum <= 20) {
                         totalRounds = roundsNum;
                         gameState = 1;
-                        botReply = `🔄 <b>Rounds set to: ${totalRounds}</b>.<br><br><b>Choose Difficulty</b><br>Type <b>Easy</b>, <b>Medium</b>, or <b>Hard</b>.<br><br><i>How scoring works: Famous countries give few points (15-30), while rare countries award huge points (70-98)!</i>`;
+                        botReply = `🔄 <b>Rounds set to: ${totalRounds}</b>.<br><br><b>Choose Difficulty</b><br>Type <b>Easy</b>, <b>Medium</b>, or <b>Hard</b>.<br><br><i>How scoring works: Famous countries give few points, while rare countries award huge points!</i>`;
                     } else {
                         botReply = `⚠️ Please enter a valid number of rounds between 1 and 20.`;
                     }
